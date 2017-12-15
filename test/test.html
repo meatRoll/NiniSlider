@@ -8,6 +8,16 @@
     <script src="../NiniSlider.js"></script>
 </head>
 <body>
-    
+    <div id="test" style="width:400px; height:300px;"></div>
+    <script>
+        window.onload = function() {
+            var a = NiniSlider({
+                id: "test"
+                , data: [{src: "../images/aaa.png"}]
+            });
+            console.log(a);
+            console.dir(NiniSlider);
+        }
+    </script>
 </body>
 </html>
