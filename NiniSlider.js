@@ -7,7 +7,7 @@
     "use strict";
     // amd规范
     if ( typeof define === "function" && define.amd ) {
-        define( "NiniSlider", ["jquery"], function(jQuery) {
+        define( "NiniSlider", [], function() {
             return factory(global);
         } );
     } 
@@ -19,7 +19,7 @@
     else {
         global.NiniSlider = factory(global);
     }
-})(typeof window !== "undefined"? window: this, function(window, $){
+})(typeof window !== "undefined"? window: this, function(window){
     "use strict";
 
     // 检测是否存在document
@@ -34,15 +34,13 @@
     , NiniSlider = function(options) {
         var i = 0
         , optName
-        , optNameArr = ["id", "data"]
-        , length = optNameArr.length;
+        , optNameArr = ["id", "data"];
         // 对传入的值做预先的检查
-        for(; i < length; i++){
-            optName = optNameArr[i];
-            if(!options[optName]){
-                throw new Error("参数" + optName + "的值不能为" + options[optName]);
+        NiniSlider.each(optNameArr, function(index, value){
+            if(!options[value]) {
+                throw new Error("参数" + value + "的值不能为" + options[value]);
             }
-        }
+        })
         return new NiniSlider.fn.init(options);
     };
 
@@ -58,9 +56,13 @@
         var el
         , id
         , data
+        , dots
+        , dotsContainer
+        , dotsContainerWidth = 0
         , styleTag
         , sliderWidth
         , slidersContainer
+        , singleSilders
         , picHtml = ""
         , dotHtml = ""
         , insertHtml = ""
@@ -79,11 +81,15 @@
             dotHtml +=  "<li class=\"dot\"></li>";
         });
         insertHtml = "<ul class=\"sliders-container clearfix\" id=\"" + id + "SlidersContainer\">" + picHtml + "</ul>"
-                   + "<div class=\"pagination\" id=\"" + id + "Pagination\"><ul class=\"pagination-container clearfix\">" + dotHtml + "</ul></div>";
+                   + "<div class=\"pagination\" id=\"" + id + "Pagination\"><ul class=\"pagination-container clearfix\" id=\"" + id + "PaginationContainer\">" + dotHtml + "</ul></div>";
         el.innerHTML = insertHtml;
         // 调整样式
         slidersContainer = document.getElementById(id + "SlidersContainer");
         NiniSlider.css(slidersContainer, { width: sliderWidth.replace("px", "") * data.length + "px"});
+        singleSilders = slidersContainer.getElementsByTagName("li");
+        NiniSlider.each(singleSilders, function(index, value){
+            NiniSlider.css(value, {width: sliderWidth.replace("px", "") + "px"});
+        });
         styleText = "#" + id + " div,#" + id + " ul,#" + id + " li,#" + id + " img{box-sizing:border-box;padding: 0;margin: 0;}#" + id + " ul{margin:0;padding:0;}#" + id + "{overflow:hidden;position:relative;}#" + id + " .clearfix{zoom:1;}#" + id + " .clearfix::after{content:\"\";display:table;clear:both;}#" + id + " .sliders-container{height:100%;}#" + id + " ul>li{height:100%;float:left;list-style:none;}#" + id + " .pagination-container>li+li{margin-left:10px}#" + id + " .pagination{width:100%;position:absolute;left:0;bottom:5%;}#" + id + " .pagination-container{margin:0 auto;}#" + id + " .dot{width:20px;height:20px;float:left;border-radius:50%;background-color:red;cursor:pointer;}";
         styleTag = document.createElement("style");
         if ('styleSheet' in styleTag) {
@@ -93,7 +99,12 @@
             styleTag.innerHTML = styleText;
         }
         document.getElementsByTagName("head")[0].appendChild(styleTag);
-
+        dotsContainer = document.getElementById(id + "PaginationContainer");
+        dots = dotsContainer.getElementsByTagName("li");
+        NiniSlider.each(dots, function(index, value) {
+            dotsContainerWidth += parseFloat(NiniSlider.css(value,"width")) + parseFloat(NiniSlider.css(value, "margin-left"));
+        });
+        NiniSlider.css(dotsContainer, {"width": dotsContainerWidth + "px"});
     } 
 
     // 扩展函数(只提供浅拷贝)
@@ -121,11 +132,14 @@
     NiniSlider.extend(NiniSlider, {
         // 遍历
         each: function(target, callback) {
-            if(!(target instanceof Array)){
+            if(!(target instanceof Array) && typeof target !== "object" || !target){
                 throw new Error("传入目标类型错误，不能为" + target);
             }
             var i = 0
             , length = target.length;
+            if(typeof length === "undefined") {
+                throw new Error("传入的对象必须是伪数组");
+            }
             for(; i < length; i++){
                 callback(i, target[i]);
             }
