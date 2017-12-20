@@ -53,8 +53,10 @@
     }
 
     var opts = { 
-        moveTime: 500,
-        switchTime: 1000
+        moveTime: 500
+        , switchTime: 1000
+        , defaultIndex: 0
+        , direction: "right"
     }
     // 初始化函数
     , init = NiniSlider.fn.init = function(options) {
@@ -78,7 +80,8 @@
         id = opts.id;
         data = opts.data;
         el = slider.el = document.getElementById(id);
-        sliderWidth = slider.width = NiniSlider.css(el, "width");
+        slider.width =  NiniSlider.css(el, "width");
+        sliderWidth = window.parseFloat(slider.width);
         slider.height = NiniSlider.css(el, "height");
         // 添加dom结构
         NiniSlider.each(data, function(value, index) {
@@ -96,11 +99,12 @@
                    + "<div class=\"pagination\" id=\"" + id + "Pagination\"><ul class=\"pagination-container clearfix\" id=\"" + id + "PaginationContainer\">" + dotHtml + "</ul></div>";
         el.innerHTML = insertHtml;
         // 调整样式
-        slidersContainer = document.getElementById(id + "SlidersContainer");
-        NiniSlider.css(slidersContainer, { width: sliderWidth.replace("px", "") * (data.length + 2) + "px", "margin-left": "-" + sliderWidth});
+        slidersContainer = slider.slidersContainer = document.getElementById(id + "SlidersContainer");
+        NiniSlider.css(slidersContainer, { width: sliderWidth * (data.length + 2) + "px", "margin-left": "-" + sliderWidth * (opts.defaultIndex + 1) + "px"});
         singleSilders = slidersContainer.getElementsByTagName("li");
+        slider.sliders = [].slice.call(singleSilders, 1, singleSilders.length - 1);
         NiniSlider.each(singleSilders, function(value){
-            NiniSlider.css(value, {width: sliderWidth.replace("px", "") + "px"});
+            NiniSlider.css(value, {width: sliderWidth + "px"});
         });
         styleText = "#" + id + " div,#" + id + " ul,#" + id + " li,#" + id + " img{box-sizing:border-box;padding: 0;margin: 0;}#" + id + " ul{margin:0;padding:0;}#" + id + "{overflow:hidden;position:relative;}#" + id + " .clearfix{zoom:1;}#" + id + " .clearfix::after{content:\"\";display:table;clear:both;}#" + id + " .sliders-container{height:100%;}#" + id + " ul>li{height:100%;float:left;list-style:none;}#" + id + " .pagination-container>li+li{margin-left:10px}#" + id + " .pagination{width:100%;position:absolute;left:0;bottom:5%;}#" + id + " .pagination-container{margin:0 auto;}#" + id + " .dot{width:16px;height:16px;float:left;border-radius:50%;background-color:red;cursor:pointer;}";
         styleTag = document.createElement("style");
@@ -121,22 +125,60 @@
         // 绑定方法
         bindMethods();
         // 进行行为的初始化
+        slider.currentIndex = slider.defaultIndex = opts.defaultIndex;
+        slider.direction = opts.direction;
         if(opts.switchTime >= opts.moveTime) {
             switchClocker = setInterval(function(){
-                animate(opts.switchTime);
+                slider.animate(opts.moveTime, slider.direction === "right"? ++slider.currentIndex: --slider.currentIndex);
+                if (slider.direction === "right") {
+                    slider.currentIndex === slider.sliders.length - 1? slider.currentIndex = -1: null;
+                } else {
+                    slider.currentIndex === 0? slider.currentIndex = slider.sliders.length: null;
+                }
             }, opts.switchTime);
         } else {
-            throw new Error("切换时间为");
+            throw new Error("存在错误：\nswitchTime为" + opts.switchTime + "；\nmoveTime为" + opts.moveTime);
         }
     } 
 
     // 初始化完成后在slider上面绑定方法
     function bindMethods() {
         NiniSlider.extend(slider, {
-            animate: function(time) {
+            // 移动动画（只做简单的匀速运动）
+            animate: function(time, index) {
+                clearInterval(moveClocker);
                 moveClocker = setInterval(function(){
-                    
-                }, time);
+                    var container = slider.slidersContainer,
+                        count = slider.sliders.length,
+                        width = parseFloat(slider.width),
+                        targetLocation = -width * (index + 1),
+                        currentLocation = parseFloat(NiniSlider.css(this.slidersContainer, "margin-left"));
+                    var leftDis, rightDis, direction, distance, speed, nextLocation;
+                    if (targetLocation === currentLocation) {
+                        clearInterval(moveClocker);
+                    } else {
+                        if (targetLocation < currentLocation) {
+                            leftDis = Math.abs(targetLocation - currentLocation);
+                            rightDis = Math.abs(currentLocation - (-400)) + Math.abs(-width * count - currentLocation);
+                        } else if (targetLocation > currentLocation) {
+                            leftDis = Math.abs(currentLocation - targetLocation);
+                            rightDis = Math.abs(targetLocation - (-400)) + Math.abs(-width * count - targetLocation);
+                        }
+                        if (leftDis > rightDis) {
+                            direction = "right";
+                            distance = rightDis;
+                        } else if (leftDis < rightDis) {
+                            direction = "left";
+                            distance = leftDis;
+                        } else {
+                            direction = slider.direction;
+                            distance = rightDis;
+                        }
+                        speed = distance / time;
+                        nextLocation = direction === "right"? currentLocation - speed: currentLocation + speed;
+                        NiniSlider.css(container, {"margin-left": nextLocation + "px"});
+                    }
+                }.bind(this), 1);
             }
         });
     }
