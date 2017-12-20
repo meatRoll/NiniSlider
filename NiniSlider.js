@@ -50,7 +50,9 @@
         , constructor: NiniSlider
     }
 
-    var opts = { }
+    var opts = { 
+        infinity: true
+    }
     // 初始化函数
     , init = NiniSlider.fn.init = function(options) {
         var el
@@ -76,8 +78,15 @@
         sliderWidth = slider.width = NiniSlider.css(el, "width");
         slider.height = NiniSlider.css(el, "height");
         // 添加dom结构
-        NiniSlider.each(data, function(value) {
+        NiniSlider.each(data, function(value, index) {
+            var lastIndex = this.length - 1;
+            if(index === 0) {
+                picHtml +=  "<li><img src=\"" + (this[lastIndex].src?this[lastIndex].src:"") + "\" alt=\"\"></li>";
+            }
             picHtml +=  "<li><img src=\"" + (value.src?value.src:"") + "\" alt=\"\"></li>";
+            if(index === lastIndex) {
+                picHtml += "<li><img src=\"" + (this[0].src?this[0].src:"") + "\" alt=\"\"></li>";
+            }
             dotHtml +=  "<li class=\"dot\"></li>";
         });
         insertHtml = "<ul class=\"sliders-container clearfix\" id=\"" + id + "SlidersContainer\">" + picHtml + "</ul>"
@@ -85,12 +94,12 @@
         el.innerHTML = insertHtml;
         // 调整样式
         slidersContainer = document.getElementById(id + "SlidersContainer");
-        NiniSlider.css(slidersContainer, { width: sliderWidth.replace("px", "") * data.length + "px"});
+        NiniSlider.css(slidersContainer, { width: sliderWidth.replace("px", "") * (data.length + 2) + "px", "margin-left": "-" + sliderWidth});
         singleSilders = slidersContainer.getElementsByTagName("li");
         NiniSlider.each(singleSilders, function(value){
             NiniSlider.css(value, {width: sliderWidth.replace("px", "") + "px"});
         });
-        styleText = "#" + id + " div,#" + id + " ul,#" + id + " li,#" + id + " img{box-sizing:border-box;padding: 0;margin: 0;}#" + id + " ul{margin:0;padding:0;}#" + id + "{overflow:hidden;position:relative;}#" + id + " .clearfix{zoom:1;}#" + id + " .clearfix::after{content:\"\";display:table;clear:both;}#" + id + " .sliders-container{height:100%;}#" + id + " ul>li{height:100%;float:left;list-style:none;}#" + id + " .pagination-container>li+li{margin-left:10px}#" + id + " .pagination{width:100%;position:absolute;left:0;bottom:5%;}#" + id + " .pagination-container{margin:0 auto;}#" + id + " .dot{width:20px;height:20px;float:left;border-radius:50%;background-color:red;cursor:pointer;}";
+        styleText = "#" + id + " div,#" + id + " ul,#" + id + " li,#" + id + " img{box-sizing:border-box;padding: 0;margin: 0;}#" + id + " ul{margin:0;padding:0;}#" + id + "{overflow:hidden;position:relative;}#" + id + " .clearfix{zoom:1;}#" + id + " .clearfix::after{content:\"\";display:table;clear:both;}#" + id + " .sliders-container{height:100%;}#" + id + " ul>li{height:100%;float:left;list-style:none;}#" + id + " .pagination-container>li+li{margin-left:10px}#" + id + " .pagination{width:100%;position:absolute;left:0;bottom:5%;}#" + id + " .pagination-container{margin:0 auto;}#" + id + " .dot{width:16px;height:16px;float:left;border-radius:50%;background-color:red;cursor:pointer;}";
         styleTag = document.createElement("style");
         // IE8兼容写法
         if ('styleSheet' in styleTag) {
@@ -106,14 +115,18 @@
             dotsContainerWidth += parseFloat(NiniSlider.css(value,"width")) + parseFloat(NiniSlider.css(value, "margin-left"));
         });
         NiniSlider.css(dotsContainer, {"width": dotsContainerWidth + "px"});
-        
-        doAfterInit();
+        // 绑定方法
+        bindMethods();
+        // 进行行为的初始化
+
     } 
 
     // 初始化完成后在slider上面绑定方法
-    function doAfterInit() {
+    function bindMethods() {
         NiniSlider.extend(slider, {
-            
+            animate: function(time) {
+
+            }
         });
     }
 
@@ -151,7 +164,7 @@
                 throw new Error("传入的对象必须是伪数组");
             }
             for(; i < length; i++){
-                callback(target[i], i);
+                callback.bind(target, target[i], i)();
             }
         },
         // 获取样式与赋予样式
