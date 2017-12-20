@@ -31,6 +31,8 @@
     var version = "1.0.0"
     , document = window.document
     , slider
+    , switchClocker
+    , moveClocker
     , NiniSlider = function(options) {
         var i = 0
         , optName
@@ -51,7 +53,8 @@
     }
 
     var opts = { 
-        infinity: true
+        moveTime: 500,
+        switchTime: 1000
     }
     // 初始化函数
     , init = NiniSlider.fn.init = function(options) {
@@ -118,14 +121,22 @@
         // 绑定方法
         bindMethods();
         // 进行行为的初始化
-
+        if(opts.switchTime >= opts.moveTime) {
+            switchClocker = setInterval(function(){
+                animate(opts.switchTime);
+            }, opts.switchTime);
+        } else {
+            throw new Error("切换时间为");
+        }
     } 
 
     // 初始化完成后在slider上面绑定方法
     function bindMethods() {
         NiniSlider.extend(slider, {
             animate: function(time) {
-
+                moveClocker = setInterval(function(){
+                    
+                }, time);
             }
         });
     }
