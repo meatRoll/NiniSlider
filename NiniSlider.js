@@ -102,11 +102,11 @@
         slidersContainer = slider.slidersContainer = document.getElementById(id + "SlidersContainer");
         NiniSlider.css(slidersContainer, { width: sliderWidth * (data.length + 2) + "px", "margin-left": "-" + sliderWidth * (opts.defaultIndex + 1) + "px"});
         singleSilders = slidersContainer.getElementsByTagName("li");
-        slider.sliders = [].slice.call(singleSilders, 1, singleSilders.length - 1);
+        slider.sliders = Array.prototype.concat.apply([],singleSilders).slice(1, singleSilders.length - 1);
         NiniSlider.each(singleSilders, function(value){
             NiniSlider.css(value, {width: sliderWidth + "px"});
         });
-        styleText = "#" + id + " div,#" + id + " ul,#" + id + " li,#" + id + " img{box-sizing:border-box;padding: 0;margin: 0;}#" + id + " ul{margin:0;padding:0;}#" + id + "{overflow:hidden;position:relative;}#" + id + " .clearfix{zoom:1;}#" + id + " .clearfix::after{content:\"\";display:table;clear:both;}#" + id + " .sliders-container{height:100%;}#" + id + " ul>li{height:100%;float:left;list-style:none;}#" + id + " .pagination-container>li+li{margin-left:10px}#" + id + " .pagination{width:100%;position:absolute;left:0;bottom:5%;}#" + id + " .pagination-container{margin:0 auto;}#" + id + " .dot{width:16px;height:16px;float:left;border-radius:50%;background-color:red;cursor:pointer;}";
+        styleText = "#" + id + " div,#" + id + " ul,#" + id + " li,#" + id + " img{box-sizing:border-box;padding: 0;margin: 0;}#" + id + " ul{margin:0;padding:0;}#" + id + "{overflow:hidden;position:relative;}#" + id + " .clearfix{zoom:1;}#" + id + " .clearfix::after{content:\"\";display:table;clear:both;}#" + id + " .sliders-container{height:100%;}#" + id + " ul>li{height:100%;float:left;list-style:none;}#" + id + " .pagination-container>li+li{margin-left:10px}#" + id + " .pagination{width:100%;position:absolute;left:0;bottom:5%;}#" + id + " .pagination-container{margin:0 auto;}#" + id + " .dot{width:16px;height:16px;float:left;border-radius:50%;background-color:white;cursor:pointer;}#" + id + " .currentIndexDot{background-color:red}";
         styleTag = document.createElement("style");
         // IE8兼容写法
         if ('styleSheet' in styleTag) {
@@ -118,6 +118,7 @@
         document.getElementsByTagName("head")[0].appendChild(styleTag);
         dotsContainer = document.getElementById(id + "PaginationContainer");
         dots = dotsContainer.getElementsByTagName("li");
+        dots[opts.defaultIndex].className = dots[opts.defaultIndex].className + " currentIndexDot";
         NiniSlider.each(dots, function(value) {
             dotsContainerWidth += parseFloat(NiniSlider.css(value,"width")) + parseFloat(NiniSlider.css(value, "margin-left"));
         });
@@ -147,38 +148,46 @@
             // 移动动画（只做简单的匀速运动）
             animate: function(time, index) {
                 clearInterval(moveClocker);
-                moveClocker = setInterval(function(){
-                    var container = slider.slidersContainer,
-                        count = slider.sliders.length,
-                        width = parseFloat(slider.width),
-                        targetLocation = -width * (index + 1),
-                        currentLocation = parseFloat(NiniSlider.css(this.slidersContainer, "margin-left"));
-                    var leftDis, rightDis, direction, distance, speed, nextLocation;
-                    if (targetLocation === currentLocation) {
-                        clearInterval(moveClocker);
-                    } else {
-                        if (targetLocation < currentLocation) {
-                            leftDis = Math.abs(targetLocation - currentLocation);
-                            rightDis = Math.abs(currentLocation - (-400)) + Math.abs(-width * count - currentLocation);
-                        } else if (targetLocation > currentLocation) {
-                            leftDis = Math.abs(currentLocation - targetLocation);
-                            rightDis = Math.abs(targetLocation - (-400)) + Math.abs(-width * count - targetLocation);
-                        }
-                        if (leftDis > rightDis) {
-                            direction = "right";
-                            distance = rightDis;
-                        } else if (leftDis < rightDis) {
-                            direction = "left";
-                            distance = leftDis;
-                        } else {
-                            direction = slider.direction;
-                            distance = rightDis;
-                        }
-                        speed = distance / time;
-                        nextLocation = direction === "right"? currentLocation - speed: currentLocation + speed;
-                        NiniSlider.css(container, {"margin-left": nextLocation + "px"});
+                var container = slider.slidersContainer,
+                    count = slider.sliders.length,
+                    width = parseFloat(slider.width),
+                    targetLocation = -width * (index + 1),
+                    currentLocation = parseFloat(NiniSlider.css(this.slidersContainer, "margin-left"));
+                var leftDis, rightDis, direction, distance, speed, nextLocation;
+                if (targetLocation === currentLocation) {
+                } else {
+                    if (targetLocation < currentLocation) {
+                        leftDis = Math.abs(currentLocation - (-400)) + Math.abs(-width * count - targetLocation);
+                        rightDis = Math.abs(targetLocation - currentLocation);
+                    } else if (targetLocation > currentLocation) {
+                        leftDis = Math.abs(currentLocation - targetLocation);
+                        rightDis = Math.abs(targetLocation - (-400)) + Math.abs(-width * count - currentLocation);
                     }
-                }.bind(this), 1);
+                    if (leftDis > rightDis) {
+                        direction = "right";
+                        distance = rightDis;
+                    } else if (leftDis < rightDis) {
+                        direction = "left";
+                        distance = leftDis;
+                    } else {
+                        direction = slider.direction;
+                        distance = rightDis;
+                    }
+                    speed = distance / (time / 10);
+                    speed = direction === "right"? -speed: speed;
+                }
+                moveClocker = setInterval(function(){
+                    currentLocation = currentLocation + speed;
+                    NiniSlider.css(container, {"margin-left": currentLocation + "px"});
+                    if (direction === "left" && currentLocation === -width) {
+                        NiniSlider.css(container, {"margin-left": -width * (count + 1)});
+                    } else if (direction === "right" && currentLocation === -width * count) {
+                        NiniSlider.css(container, {"margin-left": 0});
+                    }
+                    if(currentLocation === targetLocation){
+                        clearInterval(moveClocker);
+                    }
+                }, 10);
             }
         });
     }
@@ -217,7 +226,7 @@
                 throw new Error("传入的对象必须是伪数组");
             }
             for(; i < length; i++){
-                callback.bind(target, target[i], i)();
+                callback.call(target, target[i], i);
             }
         },
         // 获取样式与赋予样式
