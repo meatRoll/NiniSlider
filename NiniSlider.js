@@ -53,7 +53,7 @@
     }
 
     var opts = { 
-        moveTime: 500
+        moveTime: 700
         , switchTime: 1000
         , defaultIndex: 0
         , direction: "right"
@@ -118,7 +118,7 @@
         document.getElementsByTagName("head")[0].appendChild(styleTag);
         dotsContainer = document.getElementById(id + "PaginationContainer");
         dots = dotsContainer.getElementsByTagName("li");
-        dots[opts.defaultIndex].className = dots[opts.defaultIndex].className + " currentIndexDot";
+        NiniSlider.addClass(dots[opts.defaultIndex], ["currentIndexDot"]);
         NiniSlider.each(dots, function(value) {
             dotsContainerWidth += parseFloat(NiniSlider.css(value,"width")) + parseFloat(NiniSlider.css(value, "margin-left"));
         });
@@ -127,15 +127,19 @@
         bindMethods();
         // 进行行为的初始化
         slider.currentIndex = slider.defaultIndex = opts.defaultIndex;
+        slider.previousIndex = undefined;
         slider.direction = opts.direction;
         if(opts.switchTime >= opts.moveTime) {
             switchClocker = setInterval(function(){
-                slider.animate(opts.moveTime, slider.direction === "right"? ++slider.currentIndex: --slider.currentIndex);
+                slider.previousIndex = slider.currentIndex;
                 if (slider.direction === "right") {
-                    slider.currentIndex === slider.sliders.length - 1? slider.currentIndex = -1: null;
+                    slider.currentIndex === slider.sliders.length - 1? slider.currentIndex = -1: void(0);
                 } else {
-                    slider.currentIndex === 0? slider.currentIndex = slider.sliders.length: null;
+                    slider.currentIndex === 0? slider.currentIndex = slider.sliders.length: void(0);
                 }
+                NiniSlider.removeClass(dots[slider.previousIndex], ["currentIndexDot"]);
+                slider.animate(opts.moveTime, slider.direction === "right"? ++slider.currentIndex: --slider.currentIndex);
+                NiniSlider.addClass(dots[slider.currentIndex], ["currentIndexDot"]);
             }, opts.switchTime);
         } else {
             throw new Error("存在错误：\nswitchTime为" + opts.switchTime + "；\nmoveTime为" + opts.moveTime);
@@ -149,13 +153,13 @@
             animate: function(time, index) {
                 clearInterval(moveClocker);
                 var container = slider.slidersContainer,
+                    moveTime = 5,
                     count = slider.sliders.length,
                     width = parseFloat(slider.width),
                     targetLocation = -width * (index + 1),
                     currentLocation = parseFloat(NiniSlider.css(this.slidersContainer, "margin-left"));
                 var leftDis, rightDis, direction, distance, speed, nextLocation;
-                if (targetLocation === currentLocation) {
-                } else {
+                if (targetLocation !== currentLocation) {
                     if (targetLocation < currentLocation) {
                         leftDis = Math.abs(currentLocation - (-400)) + Math.abs(-width * count - targetLocation);
                         rightDis = Math.abs(targetLocation - currentLocation);
@@ -173,21 +177,22 @@
                         direction = slider.direction;
                         distance = rightDis;
                     }
-                    speed = distance / (time / 10);
+                    speed = distance / (time / moveTime);
                     speed = direction === "right"? -speed: speed;
                 }
                 moveClocker = setInterval(function(){
+                    var positiveSpeed = Math.abs(speed);
                     currentLocation = currentLocation + speed;
                     NiniSlider.css(container, {"margin-left": currentLocation + "px"});
-                    if (direction === "left" && currentLocation === -width) {
+                    if (direction === "left" && (currentLocation + width) < positiveSpeed) {
                         NiniSlider.css(container, {"margin-left": -width * (count + 1)});
-                    } else if (direction === "right" && currentLocation === -width * count) {
+                    } else if (direction === "right" && (currentLocation + width * count) < positiveSpeed) {
                         NiniSlider.css(container, {"margin-left": 0});
                     }
-                    if(currentLocation === targetLocation){
+                    if (currentLocation - targetLocation < positiveSpeed){
                         clearInterval(moveClocker);
                     }
-                }, 10);
+                }, moveTime);
             }
         });
     }
@@ -239,15 +244,34 @@
                 target.style[style] = obj[style];
             }
         },
-        //获取文本与赋予文本
-        // text: function(target, text) {
-        //     if(arguments.length === 1) {
-        //         return target.textContent? target.textContent: target.innerText;
-        //     }
-        //     if(arguments.length > 1) {
-        //         target.textContent? target.textContent = text: target.innerText = text;
-        //     }
-        // }
+        // 增加类名
+        addClass: function(target, classNameArr) {
+            if(!(classNameArr instanceof Array)) {
+                throw new Error("传入的必须为数组");
+            }
+            var oldClassNameArr = target.className.split(" "),
+                newClassNameArr = oldClassNameArr.concat(classNameArr);
+            target.className = newClassNameArr.join(" ");
+        },
+        // 删除类名
+        removeClass: function(target, classNameArr) {
+            if(!(classNameArr instanceof Array)) {
+                throw new Error("传入的必须为数组");
+            }
+            var newClassNameArr = target.className.split(" "),
+                i = newClassNameArr.length - 1,
+                j = 0,
+                length = classNameArr.length;
+            for(; i >= 0; i--){
+                for(; j < length; j++) {
+                    if (newClassNameArr[i] === classNameArr[j]) {
+                        newClassNameArr.splice(i, 1);
+                        break;
+                    }
+                }
+            }
+            target.className = newClassNameArr.join(" ");
+        }
     });
 
     // 导出工厂函数
