@@ -33,6 +33,8 @@
     , slider
     , switchClocker
     , moveClocker
+    , movingLeftTime
+    , moveTime = 5
     , NiniSlider = function(options) {
         var i = 0
         , optName
@@ -117,48 +119,27 @@
         }
         document.getElementsByTagName("head")[0].appendChild(styleTag);
         dotsContainer = document.getElementById(id + "PaginationContainer");
-        dots = dotsContainer.getElementsByTagName("li");
+        dots = slider.dots = dotsContainer.getElementsByTagName("li");
         NiniSlider.addClass(dots[opts.defaultIndex], ["currentIndexDot"]);
         NiniSlider.each(dots, function(value) {
             dotsContainerWidth += parseFloat(NiniSlider.css(value,"width")) + parseFloat(NiniSlider.css(value, "margin-left"));
         });
         NiniSlider.css(dotsContainer, {"width": dotsContainerWidth + "px"});
-        // 绑定方法
-        bindMethods();
-        // 进行行为的初始化
-        slider.currentIndex = slider.defaultIndex = opts.defaultIndex;
-        slider.previousIndex = undefined;
-        slider.direction = opts.direction;
-        if(opts.switchTime >= opts.moveTime) {
-            switchClocker = setInterval(function(){
-                slider.previousIndex = slider.currentIndex;
-                if (slider.direction === "right") {
-                    slider.currentIndex === slider.sliders.length - 1? slider.currentIndex = -1: void(0);
-                } else {
-                    slider.currentIndex === 0? slider.currentIndex = slider.sliders.length: void(0);
-                }
-                NiniSlider.removeClass(dots[slider.previousIndex], ["currentIndexDot"]);
-                slider.animate(opts.moveTime, slider.direction === "right"? ++slider.currentIndex: --slider.currentIndex);
-                NiniSlider.addClass(dots[slider.currentIndex], ["currentIndexDot"]);
-            }, opts.switchTime);
-        } else {
-            throw new Error("存在错误：\nswitchTime为" + opts.switchTime + "；\nmoveTime为" + opts.moveTime);
-        }
-    } 
-
-    // 初始化完成后在slider上面绑定方法
-    function bindMethods() {
+        // 给slider绑定方法
         NiniSlider.extend(slider, {
             // 移动动画（只做简单的匀速运动）
-            animate: function(time, index) {
+            animate: function(time, index, callback) {
                 clearInterval(moveClocker);
+                NiniSlider.removeClass(slider.dots[slider.previousIndex], ["currentIndexDot"]);
+                NiniSlider.addClass(slider.dots[index], ["currentIndexDot"]);
+                movingLeftTime = time;
                 var container = slider.slidersContainer,
-                    moveTime = 5,
                     count = slider.sliders.length,
                     width = parseFloat(slider.width),
                     targetLocation = -width * (index + 1),
                     currentLocation = parseFloat(NiniSlider.css(this.slidersContainer, "margin-left"));
-                var leftDis, rightDis, direction, distance, speed, nextLocation;
+                var leftDis, rightDis, direction, distance, nextLocation
+                    , speed = 0;
                 if (targetLocation !== currentLocation) {
                     if (targetLocation < currentLocation) {
                         leftDis = Math.abs(currentLocation - (-400)) + Math.abs(-width * count - targetLocation);
@@ -185,17 +166,66 @@
                     currentLocation = currentLocation + speed;
                     NiniSlider.css(container, {"margin-left": currentLocation + "px"});
                     if (direction === "left" && (currentLocation + width) < positiveSpeed) {
-                        NiniSlider.css(container, {"margin-left": -width * (count + 1)});
+                        NiniSlider.css(container, {"margin-left": -width * (count + 1) + "px"});
                     } else if (direction === "right" && (currentLocation + width * count) < positiveSpeed) {
                         NiniSlider.css(container, {"margin-left": 0});
                     }
                     if (currentLocation - targetLocation < positiveSpeed){
                         clearInterval(moveClocker);
                     }
+                    movingLeftTime -= moveTime;
+                    if (callback && movingLeftTime < moveTime) {
+                        callback(index);
+                    }
                 }, moveTime);
+            },
+            // 开始轮播
+            startCarousel: function() {
+                if(opts.switchTime >= opts.moveTime) {
+                    switchClocker = setInterval(function(){
+                        slider.previousIndex = slider.currentIndex;
+                        if (slider.direction === "right") {
+                            slider.currentIndex === slider.sliders.length - 1? slider.currentIndex = -1: void(0);
+                        } else {
+                            slider.currentIndex === 0? slider.currentIndex = slider.sliders.length: void(0);
+                        }
+                        slider.animate(opts.moveTime, slider.direction === "right"? ++slider.currentIndex: --slider.currentIndex);
+                    }, opts.switchTime);
+                } else {
+                    throw new Error("存在错误：\nswitchTime为" + opts.switchTime + "；\nmoveTime为" + opts.moveTime);
+                }
+            },
+            stopCarousel: function() {
+                clearInterval(switchClocker);
+                clearInterval(moveClocker);
             }
         });
-    }
+        // 窗口失去焦点
+        NiniSlider.on(window, "blur", slider.stopCarousel);
+        // 窗口得到焦点
+        NiniSlider.on(window, "focus", function() {
+            clearInterval(switchClocker);
+            if (movingLeftTime >= moveTime) {
+                slider.animate(movingLeftTime, slider.currentIndex, slider.startCarousel);
+            } else {
+                slider.startCarousel();
+            }
+        });
+        // 给导航的小点绑定事件
+        NiniSlider.on(dotsContainer, "click", dots, function(index) {
+            if(index !== slider.currentIndex) {
+                slider.stopCarousel();
+                slider.previousIndex = slider.currentIndex;
+                slider.currentIndex = index;
+                slider.animate(opts.moveTime, index, slider.startCarousel);
+            }
+        });
+        // 进行行为的初始化
+        slider.currentIndex = slider.defaultIndex = opts.defaultIndex;
+        slider.previousIndex = undefined;
+        slider.direction = opts.direction;
+        slider.startCarousel();
+    } 
 
     // 扩展函数(只提供浅拷贝)
     NiniSlider.extend = function() {
@@ -271,6 +301,44 @@
                 }
             }
             target.className = newClassNameArr.join(" ");
+        },
+        // 绑定事件兼容
+        on: function(target, type) {
+            var callback, delegator, callbackFn;
+            if(arguments.length === 3) {
+                callback = arguments[2];
+            } else {
+                callback = arguments[3];
+                delegator = arguments[2];
+            }
+            callbackFn = function(event) {
+                var eventElem
+                    , length
+                    , i = 0;
+                event = event || window.event;
+                if (delegator) {
+                    eventElem = event.target || event.srcElement;
+                    if (delegator && delegator.length) {
+                        length = delegator.length;
+                        for(; i < length; i++) {
+                            if (delegator[i] === eventElem) {
+                                callback.call(event, i, delegator[i], event);
+                            }
+                        }
+                    } else {
+                        if (delegator === eventElem) {
+                            callback.call(event, delegator, event);
+                        }
+                    }
+                } else {
+                    callback.call(event, event);
+                }
+            };
+            if (document.addEventListener) {
+                target.addEventListener(type, callbackFn, false);
+            } else {
+                target.attachEvent("on" + type, callbackFn);
+            }
         }
     });
 
