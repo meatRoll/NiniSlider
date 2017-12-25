@@ -55,8 +55,8 @@
     }
 
     var opts = { 
-        moveTime: 700
-        , switchTime: 1000
+        moveTime: 1200
+        , switchTime: 1500
         , defaultIndex: 0
         , direction: "right"
     }
@@ -129,7 +129,10 @@
         NiniSlider.extend(slider, {
             // 移动动画（只做简单的匀速运动）
             animate: function(time, index, callback) {
+                debugger
                 clearInterval(moveClocker);
+                slider.previousIndex = slider.currentIndex;
+                slider.currentIndex = index;
                 NiniSlider.removeClass(slider.dots[slider.previousIndex], ["currentIndexDot"]);
                 NiniSlider.addClass(slider.dots[index], ["currentIndexDot"]);
                 movingLeftTime = time;
@@ -142,11 +145,11 @@
                     , speed = 0;
                 if (targetLocation !== currentLocation) {
                     if (targetLocation < currentLocation) {
-                        leftDis = Math.abs(currentLocation - (-400)) + Math.abs(-width * count - targetLocation);
+                        leftDis = Math.abs(currentLocation) + Math.abs(-width * count - targetLocation);
                         rightDis = Math.abs(targetLocation - currentLocation);
                     } else if (targetLocation > currentLocation) {
                         leftDis = Math.abs(currentLocation - targetLocation);
-                        rightDis = Math.abs(targetLocation - (-400)) + Math.abs(-width * count - currentLocation);
+                        rightDis = Math.abs(targetLocation) + Math.abs(-width * count - currentLocation);
                     }
                     if (leftDis > rightDis) {
                         direction = "right";
@@ -165,31 +168,30 @@
                     var positiveSpeed = Math.abs(speed);
                     currentLocation = currentLocation + speed;
                     NiniSlider.css(container, {"margin-left": currentLocation + "px"});
-                    if (direction === "left" && (currentLocation + width) < positiveSpeed) {
-                        NiniSlider.css(container, {"margin-left": -width * (count + 1) + "px"});
-                    } else if (direction === "right" && (currentLocation + width * count) < positiveSpeed) {
+                    if (direction === "left" && Math.abs(currentLocation + width) < positiveSpeed) {
+                        NiniSlider.css(container, {"margin-left": -width * count + "px"});
+                    } else if (direction === "right" && Math.abs(currentLocation + width * count) < positiveSpeed) {
                         NiniSlider.css(container, {"margin-left": 0});
                     }
-                    if (currentLocation - targetLocation < positiveSpeed){
+                    if (Math.abs(currentLocation - targetLocation) < positiveSpeed){
                         clearInterval(moveClocker);
+                        NiniSlider.css(container, {"margin-left": targetLocation + "px"});
+                        if (callback) {
+                            callback(index);
+                        }
                     }
                     movingLeftTime -= moveTime;
-                    if (callback && movingLeftTime < moveTime) {
-                        callback(index);
-                    }
                 }, moveTime);
             },
             // 开始轮播
             startCarousel: function() {
                 if(opts.switchTime >= opts.moveTime) {
                     switchClocker = setInterval(function(){
-                        slider.previousIndex = slider.currentIndex;
                         if (slider.direction === "right") {
-                            slider.currentIndex === slider.sliders.length - 1? slider.currentIndex = -1: void(0);
+                            slider.animate(opts.moveTime, slider.currentIndex === slider.sliders.length - 1? 0: slider.currentIndex + 1);
                         } else {
-                            slider.currentIndex === 0? slider.currentIndex = slider.sliders.length: void(0);
+                            slider.animate(opts.moveTime, slider.currentIndex === 0? slider.sliders.length - 1: slider.currentIndex - 1);
                         }
-                        slider.animate(opts.moveTime, slider.direction === "right"? ++slider.currentIndex: --slider.currentIndex);
                     }, opts.switchTime);
                 } else {
                     throw new Error("存在错误：\nswitchTime为" + opts.switchTime + "；\nmoveTime为" + opts.moveTime);
@@ -212,14 +214,14 @@
             }
         });
         // 给导航的小点绑定事件
-        NiniSlider.on(dotsContainer, "click", dots, function(index) {
-            if(index !== slider.currentIndex) {
-                slider.stopCarousel();
-                slider.previousIndex = slider.currentIndex;
-                slider.currentIndex = index;
-                slider.animate(opts.moveTime, index, slider.startCarousel);
-            }
-        });
+        // NiniSlider.on(dotsContainer, "click", dots, function(index) {
+        //     if(index !== slider.currentIndex) {
+        //         slider.stopCarousel();
+        //         slider.previousIndex = slider.currentIndex;
+        //         slider.currentIndex = index;
+        //         slider.animate(opts.moveTime, index, slider.startCarousel);
+        //     }
+        // });
         // 进行行为的初始化
         slider.currentIndex = slider.defaultIndex = opts.defaultIndex;
         slider.previousIndex = undefined;
